@@ -108,8 +108,8 @@
           "type" : "array",
           "items" : {
             "type" : "string",
-            "enum" : [ "available", "pending", "sold" ],
-            "default" : "available"
+            "default" : "available",
+            "enum" : [ "available", "pending", "sold" ]
           },
           "collectionFormat" : "csv"
         } ],
@@ -563,7 +563,7 @@
         "parameters" : [ {
           "name" : "username",
           "in" : "path",
-          "description" : "The name that needs to be fetched. Use user1 for testing. ",
+          "description" : "The name that needs to be fetched. Use user1 for testing.",
           "required" : true,
           "type" : "string"
         } ],
@@ -639,6 +639,7 @@
       "patch" : {
         "tags" : [ "fake_classname_tags 123#$%^" ],
         "summary" : "To test class name in snake case",
+        "description" : "To test class name in snake case",
         "operationId" : "testClassname",
         "consumes" : [ "application/json" ],
         "produces" : [ "application/json" ],
@@ -680,8 +681,8 @@
           "type" : "array",
           "items" : {
             "type" : "string",
-            "enum" : [ ">", "$" ],
-            "default" : "$"
+            "default" : "$",
+            "enum" : [ ">", "$" ]
           }
         }, {
           "name" : "enum_form_string",
@@ -699,8 +700,8 @@
           "type" : "array",
           "items" : {
             "type" : "string",
-            "enum" : [ ">", "$" ],
-            "default" : "$"
+            "default" : "$",
+            "enum" : [ ">", "$" ]
           }
         }, {
           "name" : "enum_header_string",
@@ -718,8 +719,8 @@
           "type" : "array",
           "items" : {
             "type" : "string",
-            "enum" : [ ">", "$" ],
-            "default" : "$"
+            "default" : "$",
+            "enum" : [ ">", "$" ]
           }
         }, {
           "name" : "enum_query_string",
@@ -1178,7 +1179,8 @@
           "type" : "string"
         },
         "password" : {
-          "type" : "string"
+          "type" : "string",
+          "x-obfuscated" : true
         },
         "phone" : {
           "type" : "string"
@@ -1460,8 +1462,13 @@
     },
     "Enum_Test" : {
       "type" : "object",
+      "required" : [ "enum_string_required" ],
       "properties" : {
         "enum_string" : {
+          "type" : "string",
+          "enum" : [ "UPPER", "lower", "" ]
+        },
+        "enum_string_required" : {
           "type" : "string",
           "enum" : [ "UPPER", "lower", "" ]
         },

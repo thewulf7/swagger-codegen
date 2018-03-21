@@ -14,6 +14,7 @@
 package io.swagger.client.model;
 
 import java.util.Objects;
+import java.util.Arrays;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
@@ -83,7 +84,7 @@ public class MixedPropertiesAndAdditionalPropertiesClass {
 
   public MixedPropertiesAndAdditionalPropertiesClass putMapItem(String key, Animal mapItem) {
     if (this.map == null) {
-      this.map = new HashMap<String, Animal>();
+      this.map = new HashMap<>();
     }
     this.map.put(key, mapItem);
     return this;
@@ -140,8 +141,19 @@ public class MixedPropertiesAndAdditionalPropertiesClass {
    * (except the first line).
    */
   private String toIndentedString(java.lang.Object o) {
+    return toIndentedString(o, false);
+  }
+
+  /**
+   * Convert the given object to string with each line indented by 4 spaces
+   * (except the first line). Obfuscate the value, if required.
+   */
+  private String toIndentedString(java.lang.Object o, boolean isObfuscated) {
     if (o == null) {
       return "null";
+    }
+    if (isObfuscated) {
+      return "***";
     }
     return o.toString().replace("\n", "\n    ");
   }

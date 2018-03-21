@@ -15,7 +15,7 @@
   </licenses>
   
   <build>
-    <sourceDirectory>src/main/java</sourceDirectory>
+<!--    <sourceDirectory>src/main/java</sourceDirectory>  -->
     <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
@@ -134,9 +134,9 @@
       <version>${jersey2-version}</version>
     </dependency>
     <dependency>
-      <groupId>com.fasterxml.jackson.datatype</groupId>
-      <artifactId>jackson-datatype-joda</artifactId>
-      <version>${jackson-version}</version>
+        <groupId>com.fasterxml.jackson.datatype</groupId>
+        <artifactId>jackson-datatype-joda</artifactId>
+        <version>${jackson-version}</version>
     </dependency>
     <dependency>
       <groupId>com.fasterxml.jackson.jaxrs</groupId>

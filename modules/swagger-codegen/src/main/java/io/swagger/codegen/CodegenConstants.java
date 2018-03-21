@@ -16,6 +16,9 @@ public class CodegenConstants {
     public static final String WITH_XML = "withXml";
     /* /end System Properties */
 
+    public static final String TEMPLATE_EXTENSION = "mustache";
+    public static final String DOT_TEMPLATE_EXTENSION = "." + TEMPLATE_EXTENSION;
+
     public static final String API_PACKAGE = "apiPackage";
     public static final String API_PACKAGE_DESC = "package for generated api classes";
 
