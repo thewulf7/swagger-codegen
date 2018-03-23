@@ -4,14 +4,17 @@ import io.swagger.codegen.*;
 import io.swagger.models.properties.ArrayProperty;
 import io.swagger.models.properties.MapProperty;
 import io.swagger.models.properties.Property;
+import io.swagger.codegen.*;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
+import java.util.*;
+
+import static io.swagger.codegen.languages.HaskellHttpClientCodegen.MEDIA_TYPE;
+import static io.swagger.codegen.languages.JavaClientCodegen.prioritizeContentTypes;
+import static java.util.Collections.sort;
 
 public class KotlinClientCodegen extends DefaultCodegen implements CodegenConfig {
     static Logger LOGGER = LoggerFactory.getLogger(KotlinClientCodegen.class);
@@ -23,6 +26,10 @@ public class KotlinClientCodegen extends DefaultCodegen implements CodegenConfig
     protected String packageName = "io.swagger.client";
     protected String apiDocPath = "docs/";
     protected String modelDocPath = "docs/";
+
+    public static final String RETROFIT_1 = "retrofit";
+    public static final String RETROFIT_2 = "retrofit2";
+
     protected CodegenConstants.ENUM_PROPERTY_NAMING_TYPE enumPropertyNaming = CodegenConstants.ENUM_PROPERTY_NAMING_TYPE.camelCase;
 
     /**
@@ -173,6 +180,10 @@ public class KotlinClientCodegen extends DefaultCodegen implements CodegenConfig
         importMapping.put("LocalDate", "java.time.LocalDate");
         importMapping.put("LocalTime", "java.time.LocalTime");
 
+        supportedLibraries.put("okhttp-gson", "HTTP client: OkHttp 2.7.5. JSON processing: Gson 2.8.1. Enable Parcelable models on Android using '-DparcelableModel=true'. Enable gzip request encoding using '-DuseGzipFeature=true'.");
+        supportedLibraries.put(RETROFIT_1, "HTTP client: OkHttp 2.7.5. JSON processing: Gson 2.3.1 (Retrofit 1.9.0). IMPORTANT NOTE: retrofit1.x is no longer actively maintained so please upgrade to 'retrofit2' instead.");
+        supportedLibraries.put(RETROFIT_2, "HTTP client: OkHttp 3.8.0. JSON processing: Gson 2.6.1 (Retrofit 2.3.0). Enable the RxJava adapter using '-DuseRxJava[2]=true'. (RxJava 1.x or 2.x)");
+
         specialCharReplacements.put(";", "Semicolon");
 
         cliOptions.clear();
@@ -181,6 +192,13 @@ public class KotlinClientCodegen extends DefaultCodegen implements CodegenConfig
         cliOptions.add(new CliOption(CodegenConstants.GROUP_ID, "Client package's organization (i.e. maven groupId).").defaultValue(groupId));
         cliOptions.add(new CliOption(CodegenConstants.ARTIFACT_ID, "Client artifact id (name of generated jar).").defaultValue(artifactId));
         cliOptions.add(new CliOption(CodegenConstants.ARTIFACT_VERSION, "Client package version.").defaultValue(artifactVersion));
+
+        CliOption libraryOption = new CliOption(CodegenConstants.LIBRARY, "library template (sub-template) to use");
+        libraryOption.setEnum(supportedLibraries);
+        // set okhttp-gson as the default
+        libraryOption.setDefault("okhttp-gson");
+        cliOptions.add(libraryOption);
+        setLibrary("okhttp-gson");
 
         CliOption enumPropertyNamingOpt = new CliOption(CodegenConstants.ENUM_PROPERTY_NAMING, CodegenConstants.ENUM_PROPERTY_NAMING_DESC);
         cliOptions.add(enumPropertyNamingOpt.defaultValue(enumPropertyNaming.name()));
@@ -264,6 +282,24 @@ public class KotlinClientCodegen extends DefaultCodegen implements CodegenConfig
             LOGGER.warn(CodegenConstants.INVOKER_PACKAGE + " with " + this.getName() + " generator is ignored. Use " + CodegenConstants.PACKAGE_NAME + ".");
         }
 
+        if ( "feign".equals(getLibrary()) || "retrofit".equals(getLibrary()) ){
+            modelDocTemplateFiles.remove("model_doc.mustache");
+            apiDocTemplateFiles.remove("api_doc.mustache");
+        }
+
+        final String invokerFolder = (sourceFolder + '/' + groupId).replace(".", "/");
+        final String authFolder = (sourceFolder + '/' + groupId + ".auth").replace(".", "/");
+        final String apiFolder = (sourceFolder + '/' + apiPackage).replace(".", "/");
+
+        if (usesAnyRetrofitLibrary()) {
+            supportingFiles.add(new SupportingFile("auth/OAuthOkHttpClient.mustache", authFolder, "OAuthOkHttpClient.kt"));
+            supportingFiles.add(new SupportingFile("CollectionFormats.mustache", invokerFolder, "CollectionFormats.kt"));
+            additionalProperties.put("gson", "true");
+            if ("retrofit2".equals(getLibrary())) {
+                supportingFiles.add(new SupportingFile("JSON.mustache", invokerFolder, "JSON.kt"));
+            }
+        }
+
         additionalProperties.put(CodegenConstants.API_PACKAGE, apiPackage());
         additionalProperties.put(CodegenConstants.MODEL_PACKAGE, modelPackage());
 
@@ -345,6 +381,70 @@ public class KotlinClientCodegen extends DefaultCodegen implements CodegenConfig
     public String escapeReservedWord(String name) {
         // TODO: Allow enum escaping as an option (e.g. backticks vs append/prepend underscore vs match model property escaping).
         return String.format("`%s`", name);
+    }
+
+    private static boolean isMultipartType(List<Map<String, String>> consumes) {
+        Map<String, String> firstType = consumes.get(0);
+        if (firstType != null) {
+            if ("multipart/form-data".equals(firstType.get(MEDIA_TYPE))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public Map<String, Object> postProcessOperations(Map<String, Object> objs) {
+        super.postProcessOperations(objs);
+        if (usesAnyRetrofitLibrary()) {
+            Map<String, Object> operations = (Map<String, Object>) objs.get("operations");
+            if (operations != null) {
+                List<CodegenOperation> ops = (List<CodegenOperation>) operations.get("operation");
+                for (CodegenOperation operation : ops) {
+                    if (operation.hasConsumes == Boolean.TRUE) {
+
+                        if (isMultipartType(operation.consumes)) {
+                            operation.isMultipart = Boolean.TRUE;
+                        }
+                        else {
+                            operation.prioritizedContentTypes = prioritizeContentTypes(operation.consumes);
+                        }
+                    }
+                    if (operation.returnType == null) {
+                        operation.returnType = "Void";
+                    }
+                    if (usesRetrofit2Library() && StringUtils.isNotEmpty(operation.path) && operation.path.startsWith("/")){
+                        operation.path = operation.path.substring(1);
+                    }
+
+                    // sorting operation parameters to make sure path params are parsed before query params
+                    if (operation.allParams != null) {
+                        sort(operation.allParams, new Comparator<CodegenParameter>() {
+                            @Override
+                            public int compare(CodegenParameter one, CodegenParameter another) {
+                                if (one.isPathParam && another.isQueryParam) {
+                                    return -1;
+                                }
+                                if (one.isQueryParam && another.isPathParam){
+                                    return 1;
+                                }
+
+                                return 0;
+                            }
+                        });
+                        Iterator<CodegenParameter> iterator = operation.allParams.iterator();
+                        while (iterator.hasNext()){
+                            CodegenParameter param = iterator.next();
+                            param.hasMore = iterator.hasNext();
+                        }
+                    }
+                }
+            }
+
+        }
+
+        return objs;
     }
 
     /**
@@ -500,6 +600,14 @@ public class KotlinClientCodegen extends DefaultCodegen implements CodegenConfig
         }
 
         return modified;
+    }
+
+    private boolean usesAnyRetrofitLibrary() {
+        return getLibrary() != null && getLibrary().contains(RETROFIT_1);
+    }
+
+    private boolean usesRetrofit2Library() {
+        return getLibrary() != null && getLibrary().contains(RETROFIT_2);
     }
 
     private String titleCase(final String input) {

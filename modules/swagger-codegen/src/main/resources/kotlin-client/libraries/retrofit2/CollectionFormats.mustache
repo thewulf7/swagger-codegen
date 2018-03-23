@@ -1,0 +1,48 @@
+package {{invokerPackage}};
+
+import java.util.Arrays
+
+class CollectionFormats {
+
+  class CSVParams {
+    var params:List<String>
+    constructor() {}
+    constructor(params:List<String>) {
+      this.params = params
+    }
+    constructor(vararg params:String) {
+      this.params = Arrays.asList<String>(*params)
+    }
+    public override fun toString():String {
+      return StringUtil.join(params.toTypedArray<T>(), ",")
+    }
+  }
+
+  class SSVParams:CSVParams {
+    constructor() {}
+    constructor(params:List<String>) : super(params) {}
+    constructor(vararg params:String) : super(*params) {}
+    public override fun toString():String {
+      return StringUtil.join(params.toTypedArray<T>(), " ")
+    }
+  }
+
+  class TSVParams:CSVParams {
+    constructor() {}
+    constructor(params:List<String>) : super(params) {}
+    constructor(vararg params:String) : super(*params) {}
+    public override fun toString():String {
+      return StringUtil.join(params.toTypedArray<T>(), "\t")
+    }
+  }
+
+  class PIPESParams:CSVParams {
+    constructor() {}
+    constructor(params:List<String>) : super(params) {}
+    constructor(vararg params:String) : super(*params) {}
+    public override fun toString():String {
+      return StringUtil.join(params.toTypedArray<T>(), "|")
+    }
+  }
+  
+}

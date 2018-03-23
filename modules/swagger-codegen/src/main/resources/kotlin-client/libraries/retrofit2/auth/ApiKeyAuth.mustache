@@ -1,0 +1,58 @@
+package {{invokerPackage}}.auth;
+
+import java.io.IOException
+import java.net.URI
+import java.net.URISyntaxException
+
+import okhttp3.Interceptor
+import okhttp3.Request
+import okhttp3.Response
+
+class ApiKeyAuth(location:String, paramName:String):Interceptor {
+
+  val location:String
+
+  val paramName:String
+
+  var apiKey:String
+
+  init{
+    this.location = location
+    this.paramName = paramName
+  }
+
+  @Throws(IOException::class)
+  fun intercept(chain:Chain):Response {
+    val paramValue:String
+    val request = chain.request()
+    if ("query" == location) {
+      val newQuery = request.url().uri().getQuery()
+      paramValue = paramName + "=" + apiKey
+      if (newQuery == null)
+      {
+        newQuery = paramValue
+      }
+      else
+      {
+        newQuery += "&" + paramValue
+      }
+      val newUri:URI
+      try
+      {
+        newUri = URI(request.url().uri().getScheme(), request.url().uri().getAuthority(),
+                     request.url().uri().getPath(), newQuery, request.url().uri().getFragment())
+      }
+      catch (e:URISyntaxException) {
+        throw IOException(e)
+      }
+      request = request.newBuilder().url(newUri.toURL()).build()
+    } else if ("header" == location) {
+      request = request.newBuilder()
+      .addHeader(paramName, apiKey)
+      .build()
+    }
+
+    return chain.proceed(request)
+  }
+
+}
